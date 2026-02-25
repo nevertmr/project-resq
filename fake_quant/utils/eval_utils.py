@@ -110,7 +110,7 @@ def evaluator(model, testenc, dev, args):
                 position_ids=position_ids,
                 position_embeddings=position_embeddings,
             )
-            outs[j] = outputs[0]
+            outs[j] = outputs[0] if isinstance(outputs, tuple) else outputs
         layers[i] = layer.cpu()
         del layer
         torch.cuda.empty_cache()

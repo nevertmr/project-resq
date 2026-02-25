@@ -394,7 +394,11 @@ class LlamaAttention(nn.Module):
         self.num_key_value_heads = config.num_key_value_heads
         self.num_key_value_groups = self.num_heads // self.num_key_value_heads
         self.max_position_embeddings = config.max_position_embeddings
-        self.rope_theta = config.rope_theta
+        self.rope_theta = getattr(config, 'rope_theta', None)
+        if self.rope_theta is None:
+            # transformers >= 5.x: rope_theta moved into rope_scaling dict
+            rope_params = getattr(config, 'rope_scaling', None) or getattr(config, 'rope_parameters', None) or {}
+            self.rope_theta = rope_params.get('rope_theta', getattr(config, 'default_theta', 10000.0))
         self.is_causal = True
 
         self.q_proj = nn.Linear(
@@ -542,7 +546,7 @@ class LlamaAttention(nn.Module):
             )
         else:
             # rearrange attn_output and o_proj weight
-            attn_output = self.o_proj(attn_output, column_order=self.new_column_order)
+            attn_output = self.o_proj(attn_output, column_order=self.new_column_order) if self.new_column_order is not None else self.o_proj(attn_output)
 
         if not output_attentions:
             attn_weights = None
@@ -677,7 +681,7 @@ class LlamaFlashAttention2(LlamaAttention):
         # rearrange attn_output and o_proj weight
         # if self.new_column_order is not None:
         # attn_output = attn_output[..., self.new_column_order]
-        attn_output = self.o_proj(attn_output, column_order=self.new_column_order)
+        attn_output = self.o_proj(attn_output, column_order=self.new_column_order) if self.new_column_order is not None else self.o_proj(attn_output)
 
         if not output_attentions:
             attn_weights = None
@@ -792,7 +796,7 @@ class LlamaSdpaAttention(LlamaAttention):
         attn_output = attn_output.view(bsz, q_len, -1)
 
         # rearrange attn_output and o_proj weight
-        attn_output = self.o_proj(attn_output, column_order=self.new_column_order)
+        attn_output = self.o_proj(attn_output, column_order=self.new_column_order) if self.new_column_order is not None else self.o_proj(attn_output)
 
         return attn_output, None, past_key_value
 
@@ -946,6 +950,15 @@ class LlamaPreTrainedModel(PreTrainedModel):
             module.weight.data.normal_(mean=0.0, std=std)
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
+        elif "RotaryEmbedding" in module.__class__.__name__ and hasattr(module, "original_inv_freq"):
+            rope_fn = (
+                ROPE_INIT_FUNCTIONS[module.rope_type]
+                if module.rope_type != "default"
+                else module.compute_default_rope_parameters
+            )
+            buffer_value, _ = rope_fn(module.config)
+            module.inv_freq.copy_(buffer_value)
+            module.original_inv_freq.copy_(buffer_value)
 
 
 LLAMA_INPUTS_DOCSTRING = r"""

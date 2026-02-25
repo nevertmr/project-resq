@@ -2,6 +2,17 @@
 # ResQ: Mixed-Precision Quantization of Large Language Models with Low-Rank Residuals
 This repository contains the code for the submitted paper ResQ
 
+> **Note (fork):** 이 포크는 transformers 5.x 및 RTX 5090 (Blackwell, sm_120) 환경 호환성 패치를 포함합니다.
+> 원본 레포는 Python 3.9 / PyTorch 2.3.0 / transformers 4.48.1 / CUDA 11.8 / A100 기준입니다.
+>
+> **테스트 환경:** Python 3.12 / PyTorch 2.12.0.dev (cu128) / transformers 5.2.0 / CUDA 12.8 / RTX 5090
+>
+> 주요 변경사항:
+> - `modeling_llama_2.py`: rope_theta 호환, column_order 조건부 전달, RotaryEmbedding inv_freq 재초기화
+> - `get_basis.py`, `eval_utils.py`: LlamaDecoderLayer 반환값 tuple/tensor 호환 처리
+> - `ptq.py`, `get_basis.py`: Qwen2-VL import 에러 방어
+> - `fsdp_trainer.py`: is_torch_compile_available 제거 대응
+> - `fast-hadamard-transform`: compute_120 (sm_120) 아키텍처 추가
 
 
 ## Abstract

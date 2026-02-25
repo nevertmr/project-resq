@@ -15,7 +15,10 @@ from transformers import AutoConfig, AutoTokenizer, AutoProcessor
 from eval_utils.main import ptq_model
 from eval_utils.modeling_llama_2 import LlamaForCausalLM
 from eval_utils.modeling_qwen2 import Qwen2ForCausalLM
-from eval_utils.modeling_qwen2_vl import Qwen2VLForConditionalGeneration
+try:
+    from eval_utils.modeling_qwen2_vl import Qwen2VLForConditionalGeneration
+except ImportError:
+    Qwen2VLForConditionalGeneration = None
 from utils import data_utils, eval_utils, utils
 from utils.process_args import process_args_ptq
 from lm_eval import evaluator

@@ -59,7 +59,7 @@ from transformers.utils import (
     is_in_notebook,
     is_peft_available,
     is_sagemaker_mp_enabled,
-    is_torch_compile_available,
+    # is_torch_compile_available,  # removed in transformers >= 5.x
     is_torch_xla_available,
     logging,
     XLA_FSDPV2_MIN_VERSION,
@@ -543,7 +543,7 @@ class FSDPTrainer(Trainer):
         self._memory_tracker.stop_and_update_metrics()
 
         # torch.compile
-        if args.torch_compile and not is_torch_compile_available():
+        if args.torch_compile and not hasattr(torch, 'compile'):
             raise RuntimeError("Using torch.compile requires PyTorch 2.0 or higher.")
 
         self.is_fsdp_xla_v2_enabled = args.fsdp_config.get("xla_fsdp_v2", False)

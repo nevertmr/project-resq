@@ -1,0 +1,2 @@
+[submodule "fast-hadamard-transform"]
+	url = https://github.com/nevertmr/fast-hadamard-transform.git
