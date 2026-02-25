@@ -20,7 +20,10 @@ from train_utils.main import prepare_model
 from transformers.models.llama.modeling_llama import apply_rotary_pos_emb as pos_emb_llama
 from transformers.models.mllama.modeling_mllama import apply_rotary_pos_emb as pos_emb_mllama
 from transformers.models.qwen2.modeling_qwen2 import apply_rotary_pos_emb as pos_emb_qwen
-from transformers.models.qwen2_vl.modeling_qwen2_vl import apply_multimodal_rotary_pos_emb as pos_emb_qwen2_vl
+try:
+    from transformers.models.qwen2_vl.modeling_qwen2_vl import apply_multimodal_rotary_pos_emb as pos_emb_qwen2_vl
+except ImportError:
+    pos_emb_qwen2_vl = None
 from train_utils.optimizer import SGDG
 from utils.process_args import process_args_ptq
 from utils.utils import get_local_rank, get_logger, pt_fsdp_state_dict
@@ -175,12 +178,13 @@ def get_outlier_rotations(model_args, training_args, ptq_args) -> None:
                 # register forward hook for getting inputs to MLP
 
                 # 1 sample at a time
-                outs[j] = layer(
+                _out = layer(
                     inps[j],
                     attention_mask=attention_mask,
                     position_ids=position_ids,
                     position_embeddings=position_embeddings,
-                )[0]
+                )
+                outs[j] = _out[0] if isinstance(_out, tuple) else _out
 
                 # rope cos, sin
                 cos, sin = layer.self_attn.rotary_emb(out_vp, position_ids)
@@ -570,7 +574,7 @@ def get_basis(model_args, training_args, ptq_args) -> None:
 
                     # 1 sample at a time
                     if hasattr(layer, "cross_attn"):
-                        outs[j] = layer(
+                        _out = layer(
                             inps[j],
                             attention_mask=attention_mask,
                             position_ids=position_ids,
@@ -579,14 +583,16 @@ def get_basis(model_args, training_args, ptq_args) -> None:
                             cross_attention_mask = cache["cross_attention_mask"],
                             full_text_row_masked_out_mask = cache["full_text_row_masked_out_mask"],
                             cache_position = cache["cache_position"],
-                        )[0]
+                        )
+                        outs[j] = _out[0] if isinstance(_out, tuple) else _out
                     else:
-                        outs[j] = layer(
+                        _out = layer(
                             inps[j],
                             attention_mask=attention_mask,
                             position_ids=position_ids,
                             position_embeddings=position_embeddings,
-                        )[0]
+                        )
+                        outs[j] = _out[0] if isinstance(_out, tuple) else _out
                     
                     # reshape to get value states per head
                     value_states = output_vproj.view(
